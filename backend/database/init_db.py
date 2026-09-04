@@ -1,6 +1,7 @@
 from backend.core.logger import get_logger
 from backend.database.connection import get_connection
 from backend.database.schema import (
+    ALERT_COLUMN_MIGRATIONS,
     EVENT_COLUMN_MIGRATIONS,
     SCHEMA,
 )
@@ -9,31 +10,60 @@ from backend.database.schema import (
 logger = get_logger(__name__)
 
 
-def migrate_events_table(
+def migrate_table_columns(
     connection,
+    table_name: str,
+    migrations: dict[str, str],
 ) -> None:
+    """
+    Add missing columns to an existing SQLite table.
+
+    Column definitions are supplied only from
+    trusted, hardcoded migration dictionaries.
+    """
     existing_columns = {
         row["name"]
         for row in connection.execute(
-            "PRAGMA table_info(events)"
+            f"PRAGMA table_info({table_name})"
         ).fetchall()
     }
 
     for column_name, column_type in (
-        EVENT_COLUMN_MIGRATIONS.items()
+        migrations.items()
     ):
         if column_name not in existing_columns:
             connection.execute(
                 f"""
-                ALTER TABLE events
+                ALTER TABLE {table_name}
                 ADD COLUMN {column_name} {column_type}
                 """
             )
 
             logger.info(
-                "Added events column: %s",
+                "Added %s column: %s",
+                table_name,
                 column_name,
             )
+
+
+def migrate_events_table(
+    connection,
+) -> None:
+    migrate_table_columns(
+        connection,
+        "events",
+        EVENT_COLUMN_MIGRATIONS,
+    )
+
+
+def migrate_alerts_table(
+    connection,
+) -> None:
+    migrate_table_columns(
+        connection,
+        "alerts",
+        ALERT_COLUMN_MIGRATIONS,
+    )
 
 
 def initialize_database() -> None:
@@ -45,6 +75,10 @@ def initialize_database() -> None:
         )
 
         migrate_events_table(
+            connection
+        )
+
+        migrate_alerts_table(
             connection
         )
 
