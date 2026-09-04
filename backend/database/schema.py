@@ -22,8 +22,26 @@ CREATE TABLE IF NOT EXISTS alerts (
     status TEXT NOT NULL DEFAULT 'open',
     description TEXT,
     created_at TEXT NOT NULL,
+    assigned_to TEXT,
+    analyst_notes TEXT,
+    updated_at TEXT,
     FOREIGN KEY (event_id) REFERENCES events(id)
 );
+
+CREATE TABLE IF NOT EXISTS alert_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    alert_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    note TEXT,
+    analyst TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (alert_id) REFERENCES alerts(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_alert_history_alert_id
+ON alert_history(alert_id);
 
 CREATE TABLE IF NOT EXISTS incidents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,11 +74,16 @@ CREATE TABLE IF NOT EXISTS response_actions (
 );
 """
 
-
 EVENT_COLUMN_MIGRATIONS = {
     "source_ip": "TEXT",
     "http_method": "TEXT",
     "http_path": "TEXT",
     "http_status": "INTEGER",
     "response_size": "INTEGER",
+}
+
+ALERT_COLUMN_MIGRATIONS = {
+    "assigned_to": "TEXT",
+    "analyst_notes": "TEXT",
+    "updated_at": "TEXT",
 }
