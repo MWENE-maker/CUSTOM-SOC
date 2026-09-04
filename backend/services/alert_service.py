@@ -1,16 +1,27 @@
 from datetime import datetime, timezone
+from typing import Protocol
 
 from backend.core.logger import get_logger
 from backend.database.connection import get_connection
-from backend.detection_engine.rule import DetectionRule
 
 
 logger = get_logger(__name__)
 
 
+class AlertRule(Protocol):
+    """
+    Common interface for any rule capable
+    of generating an alert.
+    """
+
+    name: str
+    description: str
+    severity: str
+
+
 def create_alert(
     event_id: int,
-    rule: DetectionRule,
+    rule: AlertRule,
 ) -> int:
     created_at = datetime.now(
         timezone.utc
@@ -56,4 +67,3 @@ def create_alert(
 
     finally:
         connection.close()
-    

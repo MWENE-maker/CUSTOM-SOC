@@ -6,7 +6,12 @@ CREATE TABLE IF NOT EXISTS events (
     event_type TEXT NOT NULL,
     severity TEXT NOT NULL,
     message TEXT NOT NULL,
-    raw_data TEXT
+    raw_data TEXT,
+    source_ip TEXT,
+    http_method TEXT,
+    http_path TEXT,
+    http_status INTEGER,
+    response_size INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS alerts (
@@ -50,3 +55,12 @@ CREATE TABLE IF NOT EXISTS response_actions (
     FOREIGN KEY (incident_id) REFERENCES incidents(id)
 );
 """
+
+
+EVENT_COLUMN_MIGRATIONS = {
+    "source_ip": "TEXT",
+    "http_method": "TEXT",
+    "http_path": "TEXT",
+    "http_status": "INTEGER",
+    "response_size": "INTEGER",
+}

@@ -1,4 +1,7 @@
 from backend.core.logger import get_logger
+from backend.detection_engine.correlation import (
+    evaluate_correlations,
+)
 from backend.detection_engine.engine import (
     evaluate_event,
 )
@@ -8,18 +11,31 @@ from backend.log_ingestion.web_log_parser import (
 from backend.services.alert_service import (
     create_alert,
 )
-from backend.services.event_service import save_event
+from backend.services.event_service import (
+    save_event,
+)
 
 
 logger = get_logger(__name__)
 
 
-def ingest_web_log(log_line: str) -> int:
-    event = normalize_web_log(log_line)
+def ingest_web_log(
+    log_line: str,
+) -> int:
+    event = normalize_web_log(
+        log_line
+    )
 
-    event_id = save_event(event)
+    event_id = save_event(
+        event
+    )
 
-    matched_rules = evaluate_event(event)
+    #
+    # Stateless detection
+    #
+    matched_rules = evaluate_event(
+        event
+    )
 
     for rule in matched_rules:
         alert_id = create_alert(
@@ -28,7 +44,30 @@ def ingest_web_log(log_line: str) -> int:
         )
 
         logger.info(
-            "Alert %s generated from event %s",
+            "Alert %s generated "
+            "from event %s",
+            alert_id,
+            event_id,
+        )
+
+    #
+    # Stateful correlation
+    #
+    correlation_rules = (
+        evaluate_correlations(
+            event
+        )
+    )
+
+    for rule in correlation_rules:
+        alert_id = create_alert(
+            event_id,
+            rule,
+        )
+
+        logger.info(
+            "Correlation alert %s "
+            "generated from event %s",
             alert_id,
             event_id,
         )

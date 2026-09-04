@@ -83,16 +83,64 @@ class TestDatabaseIntegration(unittest.TestCase):
             development_path,
         )
 
+    def test_schema_contains_structured_http_fields(
+        self,
+    ):
+        """
+        Verify that the events table contains the
+        structured HTTP fields required for correlation.
+        """
+        connection = get_connection()
+
+        try:
+            columns = connection.execute(
+                "PRAGMA table_info(events)"
+            ).fetchall()
+
+            column_names = {
+                column["name"]
+                for column in columns
+            }
+
+            expected_columns = {
+                "source_ip",
+                "http_method",
+                "http_path",
+                "http_status",
+                "response_size",
+            }
+
+            self.assertTrue(
+                expected_columns.issubset(
+                    column_names
+                )
+            )
+
+        finally:
+            connection.close()
+
     def test_event_persistence(self):
         """
-        Verify that a SecurityEvent can be written to
-        and retrieved from the temporary database.
+        Verify that a structured SecurityEvent can be
+        written to and retrieved from the temporary
+        database with all HTTP metadata preserved.
         """
         event = SecurityEvent.create(
             source="integration-test",
-            event_type="TEST_EVENT",
+            event_type="HTTP_REQUEST",
             severity="medium",
-            message="Integration test event",
+            message=(
+                "POST /login returned HTTP 401"
+            ),
+            raw_data=(
+                "192.168.1.30 "
+                "POST /login 401 412"
+            ),
+            source_ip="192.168.1.30",
+            http_method="POST",
+            http_path="/login",
+            http_status=401,
+            response_size=412,
         )
 
         event_id = save_event(event)
@@ -107,7 +155,13 @@ class TestDatabaseIntegration(unittest.TestCase):
                     source,
                     event_type,
                     severity,
-                    message
+                    message,
+                    raw_data,
+                    source_ip,
+                    http_method,
+                    http_path,
+                    http_status,
+                    response_size
                 FROM events
                 WHERE id = ?
                 """,
@@ -128,7 +182,7 @@ class TestDatabaseIntegration(unittest.TestCase):
 
             self.assertEqual(
                 row["event_type"],
-                "TEST_EVENT",
+                "HTTP_REQUEST",
             )
 
             self.assertEqual(
@@ -138,7 +192,40 @@ class TestDatabaseIntegration(unittest.TestCase):
 
             self.assertEqual(
                 row["message"],
-                "Integration test event",
+                "POST /login returned HTTP 401",
+            )
+
+            self.assertEqual(
+                row["raw_data"],
+                (
+                    "192.168.1.30 "
+                    "POST /login 401 412"
+                ),
+            )
+
+            self.assertEqual(
+                row["source_ip"],
+                "192.168.1.30",
+            )
+
+            self.assertEqual(
+                row["http_method"],
+                "POST",
+            )
+
+            self.assertEqual(
+                row["http_path"],
+                "/login",
+            )
+
+            self.assertEqual(
+                row["http_status"],
+                401,
+            )
+
+            self.assertEqual(
+                row["response_size"],
+                412,
             )
 
         finally:
@@ -156,6 +243,15 @@ class TestDatabaseIntegration(unittest.TestCase):
             message=(
                 "GET /admin returned HTTP 403"
             ),
+            raw_data=(
+                "192.168.1.25 "
+                "GET /admin 403 321"
+            ),
+            source_ip="192.168.1.25",
+            http_method="GET",
+            http_path="/admin",
+            http_status=403,
+            response_size=321,
         )
 
         event_id = save_event(event)

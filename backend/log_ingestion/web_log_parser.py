@@ -22,8 +22,12 @@ class ParsedWebLog:
     size: int
 
 
-def parse_web_log(log_line: str) -> ParsedWebLog:
-    match = WEB_LOG_PATTERN.match(log_line.strip())
+def parse_web_log(
+    log_line: str,
+) -> ParsedWebLog:
+    match = WEB_LOG_PATTERN.match(
+        log_line.strip()
+    )
 
     if not match:
         raise ValueError(
@@ -34,12 +38,18 @@ def parse_web_log(log_line: str) -> ParsedWebLog:
         ip=match.group("ip"),
         method=match.group("method"),
         path=match.group("path"),
-        status=int(match.group("status")),
-        size=int(match.group("size")),
+        status=int(
+            match.group("status")
+        ),
+        size=int(
+            match.group("size")
+        ),
     )
 
 
-def determine_severity(parsed_log: ParsedWebLog) -> str:
+def determine_severity(
+    parsed_log: ParsedWebLog,
+) -> str:
     if parsed_log.status >= 500:
         return "HIGH"
 
@@ -52,17 +62,28 @@ def determine_severity(parsed_log: ParsedWebLog) -> str:
 def normalize_web_log(
     log_line: str,
 ) -> SecurityEvent:
-    parsed = parse_web_log(log_line)
+    parsed = parse_web_log(
+        log_line
+    )
 
-    severity = determine_severity(parsed)
+    severity = determine_severity(
+        parsed
+    )
 
     return SecurityEvent.create(
         source="web-access-log",
         event_type="HTTP_REQUEST",
         severity=severity,
         message=(
-            f"{parsed.method} {parsed.path} "
-            f"returned HTTP {parsed.status}"
+            f"{parsed.method} "
+            f"{parsed.path} "
+            f"returned HTTP "
+            f"{parsed.status}"
         ),
         raw_data=log_line,
+        source_ip=parsed.ip,
+        http_method=parsed.method,
+        http_path=parsed.path,
+        http_status=parsed.status,
+        response_size=parsed.size,
     )

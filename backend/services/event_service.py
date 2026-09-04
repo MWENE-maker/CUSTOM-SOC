@@ -6,7 +6,9 @@ from backend.models.event import SecurityEvent
 logger = get_logger(__name__)
 
 
-def save_event(event: SecurityEvent) -> int:
+def save_event(
+    event: SecurityEvent,
+) -> int:
     connection = get_connection()
 
     try:
@@ -18,9 +20,14 @@ def save_event(event: SecurityEvent) -> int:
                 event_type,
                 severity,
                 message,
-                raw_data
+                raw_data,
+                source_ip,
+                http_method,
+                http_path,
+                http_status,
+                response_size
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 event.timestamp,
@@ -29,6 +36,11 @@ def save_event(event: SecurityEvent) -> int:
                 event.severity,
                 event.message,
                 event.raw_data,
+                event.source_ip,
+                event.http_method,
+                event.http_path,
+                event.http_status,
+                event.response_size,
             ),
         )
 
@@ -45,4 +57,3 @@ def save_event(event: SecurityEvent) -> int:
 
     finally:
         connection.close()
-        
