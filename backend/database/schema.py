@@ -98,8 +98,24 @@ CREATE TABLE IF NOT EXISTS incidents (
     investigation_id INTEGER,
     assigned_to TEXT,
     updated_at TEXT,
+    resolution TEXT,
     FOREIGN KEY (investigation_id) REFERENCES investigations(id)
 );
+
+CREATE TABLE IF NOT EXISTS incident_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    note TEXT,
+    analyst TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (incident_id) REFERENCES incidents(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_incident_history_incident_id
+ON incident_history(incident_id);
 
 CREATE TABLE IF NOT EXISTS indicators (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,14 +128,23 @@ CREATE TABLE IF NOT EXISTS indicators (
 
 CREATE TABLE IF NOT EXISTS response_actions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    incident_id INTEGER,
+    incident_id INTEGER NOT NULL,
     action_type TEXT NOT NULL,
     target TEXT,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'proposed',
+    requested_by TEXT,
+    approved_by TEXT,
+    created_at TEXT NOT NULL,
+    approved_at TEXT,
     executed_at TEXT,
+    updated_at TEXT,
     notes TEXT,
+    result TEXT,
     FOREIGN KEY (incident_id) REFERENCES incidents(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_response_actions_incident_id
+ON response_actions(incident_id);
 """
 
 
@@ -145,4 +170,15 @@ INCIDENT_COLUMN_MIGRATIONS = {
     ),
     "assigned_to": "TEXT",
     "updated_at": "TEXT",
+    "resolution": "TEXT",
+}
+
+
+RESPONSE_ACTION_COLUMN_MIGRATIONS = {
+    "requested_by": "TEXT",
+    "approved_by": "TEXT",
+    "created_at": "TEXT",
+    "approved_at": "TEXT",
+    "updated_at": "TEXT",
+    "result": "TEXT",
 }

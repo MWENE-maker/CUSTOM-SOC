@@ -4,6 +4,7 @@ from backend.database.schema import (
     ALERT_COLUMN_MIGRATIONS,
     EVENT_COLUMN_MIGRATIONS,
     INCIDENT_COLUMN_MIGRATIONS,
+    RESPONSE_ACTION_COLUMN_MIGRATIONS,
     SCHEMA,
 )
 
@@ -16,12 +17,6 @@ def migrate_table_columns(
     table_name: str,
     migrations: dict[str, str],
 ) -> None:
-    """
-    Add missing columns to an existing SQLite table.
-
-    Table names, column names, and column definitions are
-    supplied only from trusted, hardcoded internal values.
-    """
     existing_columns = {
         row["name"]
         for row in connection.execute(
@@ -30,24 +25,24 @@ def migrate_table_columns(
     }
 
     for column_name, column_definition in migrations.items():
-        if column_name not in existing_columns:
-            connection.execute(
-                f"""
-                ALTER TABLE {table_name}
-                ADD COLUMN {column_name} {column_definition}
-                """
-            )
+        if column_name in existing_columns:
+            continue
 
-            logger.info(
-                "Added %s column: %s",
-                table_name,
-                column_name,
-            )
+        connection.execute(
+            f"""
+            ALTER TABLE {table_name}
+            ADD COLUMN {column_name} {column_definition}
+            """
+        )
+
+        logger.info(
+            "Added column %s.%s",
+            table_name,
+            column_name,
+        )
 
 
-def migrate_events_table(
-    connection,
-) -> None:
+def migrate_events_table(connection) -> None:
     migrate_table_columns(
         connection,
         "events",
@@ -55,9 +50,7 @@ def migrate_events_table(
     )
 
 
-def migrate_alerts_table(
-    connection,
-) -> None:
+def migrate_alerts_table(connection) -> None:
     migrate_table_columns(
         connection,
         "alerts",
@@ -65,9 +58,7 @@ def migrate_alerts_table(
     )
 
 
-def migrate_incidents_table(
-    connection,
-) -> None:
+def migrate_incidents_table(connection) -> None:
     migrate_table_columns(
         connection,
         "incidents",
@@ -75,12 +66,15 @@ def migrate_incidents_table(
     )
 
 
-def create_post_migration_indexes(
-    connection,
-) -> None:
-    """
-    Create indexes that depend on columns added by migrations.
-    """
+def migrate_response_actions_table(connection) -> None:
+    migrate_table_columns(
+        connection,
+        "response_actions",
+        RESPONSE_ACTION_COLUMN_MIGRATIONS,
+    )
+
+
+def create_post_migration_indexes(connection) -> None:
     connection.execute(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS
@@ -90,30 +84,27 @@ def create_post_migration_indexes(
         """
     )
 
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS
+        idx_response_actions_incident_id
+        ON response_actions(incident_id)
+        """
+    )
+
 
 def initialize_database() -> None:
     connection = get_connection()
 
     try:
-        connection.executescript(
-            SCHEMA
-        )
+        connection.executescript(SCHEMA)
 
-        migrate_events_table(
-            connection
-        )
+        migrate_events_table(connection)
+        migrate_alerts_table(connection)
+        migrate_incidents_table(connection)
+        migrate_response_actions_table(connection)
 
-        migrate_alerts_table(
-            connection
-        )
-
-        migrate_incidents_table(
-            connection
-        )
-
-        create_post_migration_indexes(
-            connection
-        )
+        create_post_migration_indexes(connection)
 
         connection.commit()
 
