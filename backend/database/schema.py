@@ -43,6 +43,50 @@ CREATE TABLE IF NOT EXISTS alert_history (
 CREATE INDEX IF NOT EXISTS idx_alert_history_alert_id
 ON alert_history(alert_id);
 
+CREATE TABLE IF NOT EXISTS investigations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',
+    severity TEXT NOT NULL,
+    assigned_to TEXT,
+    summary TEXT,
+    findings TEXT,
+    disposition TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    closed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS investigation_alerts (
+    investigation_id INTEGER NOT NULL,
+    alert_id INTEGER NOT NULL,
+    linked_at TEXT NOT NULL,
+    PRIMARY KEY (investigation_id, alert_id),
+    FOREIGN KEY (investigation_id) REFERENCES investigations(id),
+    FOREIGN KEY (alert_id) REFERENCES alerts(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_investigation_alerts_investigation_id
+ON investigation_alerts(investigation_id);
+
+CREATE INDEX IF NOT EXISTS idx_investigation_alerts_alert_id
+ON investigation_alerts(alert_id);
+
+CREATE TABLE IF NOT EXISTS investigation_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    investigation_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    note TEXT,
+    analyst TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (investigation_id) REFERENCES investigations(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_investigation_history_investigation_id
+ON investigation_history(investigation_id);
+
 CREATE TABLE IF NOT EXISTS incidents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
@@ -50,7 +94,11 @@ CREATE TABLE IF NOT EXISTS incidents (
     status TEXT NOT NULL DEFAULT 'open',
     description TEXT,
     created_at TEXT NOT NULL,
-    closed_at TEXT
+    closed_at TEXT,
+    investigation_id INTEGER,
+    assigned_to TEXT,
+    updated_at TEXT,
+    FOREIGN KEY (investigation_id) REFERENCES investigations(id)
 );
 
 CREATE TABLE IF NOT EXISTS indicators (
@@ -74,6 +122,7 @@ CREATE TABLE IF NOT EXISTS response_actions (
 );
 """
 
+
 EVENT_COLUMN_MIGRATIONS = {
     "source_ip": "TEXT",
     "http_method": "TEXT",
@@ -82,8 +131,18 @@ EVENT_COLUMN_MIGRATIONS = {
     "response_size": "INTEGER",
 }
 
+
 ALERT_COLUMN_MIGRATIONS = {
     "assigned_to": "TEXT",
     "analyst_notes": "TEXT",
+    "updated_at": "TEXT",
+}
+
+
+INCIDENT_COLUMN_MIGRATIONS = {
+    "investigation_id": (
+        "INTEGER REFERENCES investigations(id)"
+    ),
+    "assigned_to": "TEXT",
     "updated_at": "TEXT",
 }
